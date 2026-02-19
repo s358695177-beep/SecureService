@@ -1,0 +1,32 @@
+package com.sunjintong.secureservice.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users", indexes = {
+        @Index(name = "idx_users_username",columnList = "username", unique = true)
+})
+@Getter
+@Setter
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, length = 47)
+    private String username;
+    @Column(nullable = false)
+    private String password;
+    @Column(length =  97)
+    private String email;
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+    public  User() {
+        super();
+    }
+}
