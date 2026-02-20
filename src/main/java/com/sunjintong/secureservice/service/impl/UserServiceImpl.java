@@ -7,6 +7,8 @@ import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.UserRepository;
 import com.sunjintong.secureservice.service.UserService;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +17,13 @@ import java.time.LocalDateTime;
 @Service
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
-    public UserServiceImpl(UserRepository userRepository) {
+    private final PasswordEncoder passwordEncoder;
+
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
+
     @Transactional
     @Override
     public Long registerUser(RegisterRequest registerRequest) {
@@ -26,7 +32,7 @@ public class UserServiceImpl implements UserService {
         }
         User user = new User();
         user.setUsername(registerRequest.getUsername());
-        user.setPassword(registerRequest.getPassword());
+        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
         user.setEmail(registerRequest.getEmail());
         LocalDateTime now = LocalDateTime.now();
         user.setCreatedAt(now);

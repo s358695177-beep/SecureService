@@ -18,8 +18,8 @@ public class User {
     private Long id;
     @Column(nullable = false, length = 47)
     private String username;
-    @Column(nullable = false)
-    private String password;
+    @Column(nullable = false, length = 255)
+    private String passwordHash;
     @Column(length =  97)
     private String email;
     @Column(nullable = false)

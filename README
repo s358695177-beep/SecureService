@@ -1,119 +1,230 @@
 # SecureService
-SecureService is a security-oriented backend system designed as part of my backend capability reconstruction journey toward becoming a Security-Focused Backend Engineer in Japan.
-This project is not a CRUD exercise, but a structural foundation built to emphasize:
-- Secure architecture principles
-- Clean layered design
-- Concurrency-safe data integrity
-- Exception boundary control
-- Unified API protocol design
-- Sensitive data exposure prevention
-The goal is to gradually evolve this system into a production-grade secure backend template.
+
+SecureService is a security-oriented backend system designed as part of
+my backend capability reconstruction journey toward becoming a
+**Security-Focused Backend Engineer in Japan**.
+
+This project is not a CRUD exercise, but a structural foundation built
+to emphasize:
+
+-   Secure architecture principles
+-   Clean layered design
+-   Concurrency-safe data integrity
+-   Exception boundary control
+-   Unified API protocol design
+-   Sensitive data exposure prevention
+-   Verifiable security guarantees through integration testing
+
+The goal is to gradually evolve this system into a **production-grade
+secure backend template**.
+
+------------------------------------------------------------------------
 
 ## Professional Positioning
-Target Role:
+
+**Target Role:**
 Security-Oriented Backend Engineer (Open to General Backend Roles)
+
 This project highlights:
-- Backend security mindset
-- Consistency guarantees under concurrency
-- Structured error handling
-- Data validation discipline
-- Clean service boundary separation
+
+-   Backend security mindset
+-   Consistency guarantees under concurrency
+-   Structured error handling
+-   Data validation discipline
+-   Clean service boundary separation
+-   Password security enforcement (BCrypt)
+-   RESTful HTTP semantic correctness
+
+------------------------------------------------------------------------
 
 ## 1. Tech Stack
-- Java 21
-- Spring Boot
-- Spring Data JPA
-- MySQL
-- Jakarta Validation
-- Lombok
+
+-   Java 21\
+-   Spring Boot\
+-   Spring Data JPA\
+-   MySQL\
+-   H2 (Test Environment)\
+-   Jakarta Validation\
+-   Spring Security Crypto (BCrypt)\
+-   Lombok
+
+------------------------------------------------------------------------
 
 ## 2. Architecture Design
+
 Layered Architecture:
+
 Controller → Service → Repository → Database
+
 Key design principles:
-- Service layer contains business logic only.
-- Controller layer handles HTTP protocol only.
-- Entity objects are never exposed directly to API consumers.
-- Unified `Result<T>` wrapper ensures consistent API response structure.
-- Global exception handler prevents internal stack trace leakage.
+
+-   Service layer contains business logic only.
+-   Controller layer handles HTTP protocol only.
+-   Entity objects are never exposed directly to API consumers.
+-   Unified `Result<T>` wrapper ensures consistent API response
+    structure.
+-   Global exception handler prevents internal stack trace leakage.
+-   RESTful HTTP semantics are strictly enforced (201 / 409 / 400 / 500).
+
+------------------------------------------------------------------------
 
 ## 3. Unified Response Model
+
 All APIs return a standardized structure:
-```json
+
+``` json
 {
   "code": 0,
   "message": "success",
   "data": {}
 }
+```
 
-Error Code Strategy：
-Code	Meaning
-0	    Success
-1001	Parameter invalid
-1002	Username already exists
-5000	Internal system error
+### Error Code Strategy
 
-4. Exception Handling Strategy
-1) Business Exception
-Custom BizException is used for domain-level errors.
-Example:
-Username duplication
-Business rule violation
+  Code   Meaning
+  ------ -------------------------
+  0      Success
+  1001   Parameter invalid
+  1002   Username already exists
+  5000   Internal system error
 
-2) Validation Exception
+HTTP status codes and business codes are separated to ensure:
+
+-   Protocol correctness (HTTP)
+-   Business semantic clarity (code field)
+
+------------------------------------------------------------------------
+
+## 4. Exception Handling Strategy
+
+### 1) Business Exception
+
+Custom `BizException` is used for domain-level errors.
+
+Mapped to HTTP 409 Conflict.
+
+------------------------------------------------------------------------
+
+### 2) Validation Exception
+
 Triggered by Jakarta Validation annotations.
 
-3) System Exception
-Captured globally and mapped to safe error responses without leaking stack traces.
+Mapped to HTTP 400 Bad Request.
 
-5. Registration Flow Design
-Endpoint:
+------------------------------------------------------------------------
+
+### 3) System Exception
+
+Captured globally and mapped to HTTP 500 without leaking stack traces.
+
+------------------------------------------------------------------------
+
+## 5. Registration Flow Design
+
+### Endpoint
+
 POST /users/register
 
-Request body:
+### Request Body
+
+``` json
 {
   "username": "aaa",
   "password": "123456789",
   "email": "a@b.com"
 }
+```
 
-Execution flow:
-1) Parameter validation (@Valid)
+### Execution Flow
 
-2) Service-level semantic validation (username existence check)
+1.  Parameter validation (`@Valid`)
+2.  Service-level semantic validation (username existence check)
+3.  BCrypt password hashing
+4.  Entity construction
+5.  Timestamp initialization
+6.  Database persistence
+7.  Return generated user ID (HTTP 201)
 
-3) Entity construction
+------------------------------------------------------------------------
 
-4) Timestamp initialization
-
-5) Database persistence
-
-6) Return generated user ID
-
-6. Dual-Layer Consistency Protection
+## 6. Dual-Layer Consistency Protection
 
 To ensure data integrity under concurrency:
-Service layer performs semantic existence check.
-Database enforces unique index on username.
-DataIntegrityViolationException is translated into business exception.
+
+-   Service layer performs semantic existence check.
+-   Database enforces unique index on username.
+-   `DataIntegrityViolationException` is translated into business
+    exception.
+
 This prevents race-condition-based duplication.
 
-7. Security Considerations
-Sensitive fields (e.g., password) are excluded from DTO toString.
-Entity objects are not directly returned to clients.
-Global exception handler prevents stack trace exposure.
-Database-level uniqueness guarantees data consistency.
+------------------------------------------------------------------------
 
-8. Future Enhancements
-Password hashing (BCrypt)
-JWT authentication
-Role-Based Access Control (RBAC)
-Login attempt limitation
-Audit logging system
-Rate limiting
-Security middleware extension
+## 7. Password Security Enforcement
 
-9. Project Goal
-The goal of SecureService is to build a production-oriented secure backend foundation,
-not a simple CRUD example.
-It serves as a structural base for scalable and security-enhanced backend systems.
+-   Passwords are never stored in plaintext.
+-   BCrypt hashing is applied before persistence.
+-   Hash format verification is covered by integration tests.
+-   `PasswordEncoder.matches()` is used in tests to ensure correct
+    hashing logic.
+
+This prevents:
+
+-   Plaintext leakage
+-   Accidental double hashing
+-   Incorrect encryption logic
+
+------------------------------------------------------------------------
+
+## 8. Integration Testing Strategy
+
+The project includes integration-level verification using:
+
+-   `@SpringBootTest`
+-   `MockMvc`
+-   `H2 in-memory database`
+-   `@Transactional` rollback isolation
+
+Covered scenarios:
+
+-   Successful registration → HTTP 201
+-   Duplicate username → HTTP 409
+-   Invalid parameters → HTTP 400
+-   Password hash correctness verification
+
+This ensures security guarantees are not only designed, but verifiable.
+
+------------------------------------------------------------------------
+
+## 9. Security Considerations
+
+-   Sensitive fields (e.g., password) are excluded from DTO
+    `toString()`.
+-   Entity objects are never returned directly to clients.
+-   Global exception handler prevents stack trace exposure.
+-   Database-level uniqueness guarantees data consistency.
+-   HTTP semantics strictly reflect system state.
+
+------------------------------------------------------------------------
+
+## 10. Future Enhancements
+
+-   JWT authentication
+-   Role-Based Access Control (RBAC)
+-   Login attempt limitation
+-   Audit logging system
+-   Rate limiting
+-   Security middleware extension
+-   Docker deployment template
+-   CI integration
+
+------------------------------------------------------------------------
+
+## 11. Project Goal
+
+The goal of SecureService is to build a production-oriented secure
+backend foundation, not a simple CRUD example.
+
+It serves as a structural base for scalable and security-enhanced
+backend systems.
