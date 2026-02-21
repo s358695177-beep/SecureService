@@ -1,7 +1,7 @@
 package com.sunjintong.secureservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sunjintong.secureservice.dto.RegisterRequest;
+import com.sunjintong.secureservice.dto.user.RegisterRequest;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -105,7 +106,7 @@ class UserControllerTest {
     }
 
     private void persistUser(String username, String rawPassword, String email) {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         User u = new User();
         u.setUsername(username);
         u.setPasswordHash(passwordEncoder.encode(rawPassword));

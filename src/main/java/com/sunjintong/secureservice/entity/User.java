@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,9 +24,9 @@ public class User {
     @Column(length =  97)
     private String email;
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
     public  User() {
         super();
     }

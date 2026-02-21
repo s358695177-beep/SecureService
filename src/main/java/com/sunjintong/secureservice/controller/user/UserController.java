@@ -1,10 +1,9 @@
-package com.sunjintong.secureservice.controller;
+package com.sunjintong.secureservice.controller.user;
 
 import com.sunjintong.secureservice.common.Result;
-import com.sunjintong.secureservice.dto.RegisterRequest;
-import com.sunjintong.secureservice.service.UserService;
+import com.sunjintong.secureservice.dto.user.RegisterRequest;
+import com.sunjintong.secureservice.service.user.UserService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

@@ -11,3 +11,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+security:
+  jwt:
+    issuer: "secure-service"
+    secret: "${JWT_SECRET}"
+    access-ttl-minutes: 30
