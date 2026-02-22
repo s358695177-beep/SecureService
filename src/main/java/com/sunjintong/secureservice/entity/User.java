@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users", indexes = {
@@ -19,7 +18,7 @@ public class User {
     private Long id;
     @Column(nullable = false, length = 47)
     private String username;
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false)
     private String passwordHash;
     @Column(length =  97)
     private String email;

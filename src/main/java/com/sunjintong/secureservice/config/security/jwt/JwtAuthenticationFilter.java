@@ -4,7 +4,6 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sunjintong.secureservice.common.security.AuthPrincipal;
 import com.sunjintong.secureservice.common.security.CurrentUser;
 import com.sunjintong.secureservice.common.security.SecurityResponseWriter;
-import com.sunjintong.secureservice.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

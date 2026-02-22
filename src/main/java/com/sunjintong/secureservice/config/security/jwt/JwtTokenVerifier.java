@@ -6,7 +6,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sunjintong.secureservice.common.security.AuthPrincipal;
-import com.sunjintong.secureservice.common.security.SecurityResponseWriter;
 import com.sunjintong.secureservice.config.security.JwtProperties;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.UserRepository;
