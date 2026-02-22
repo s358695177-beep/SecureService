@@ -1,12 +1,15 @@
 package com.sunjintong.secureservice.config.security.jwt;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sunjintong.secureservice.common.security.AuthPrincipal;
 import com.sunjintong.secureservice.common.security.CurrentUser;
 import com.sunjintong.secureservice.common.security.SecurityResponseWriter;
+import com.sunjintong.secureservice.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,14 +19,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@RequiredArgsConstructor
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenVerifier tokenVerifier;
 
-    public JwtAuthenticationFilter(JwtTokenVerifier tokenVerifier) {
-        this.tokenVerifier = tokenVerifier;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -61,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             filterChain.doFilter(request, response);
-        } catch (Exception e) {
+        } catch (JWTVerificationException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
             if (!response.isCommitted()) {
                 SecurityResponseWriter.writeUnauthorized(response);

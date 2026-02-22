@@ -27,6 +27,8 @@ public class User {
     private Instant createdAt;
     @Column(nullable = false)
     private Instant updatedAt;
+    @Column(nullable = false)
+    private Integer tokenVersion;
     public  User() {
         super();
     }

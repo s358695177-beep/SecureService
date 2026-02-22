@@ -38,6 +38,7 @@ public class UserServiceImpl implements UserService {
         Instant now = Instant.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
+        user.setTokenVersion(0);
         try{
             User savedUser = userRepository.save(user);
             Role userRole = roleRepository.findByCode("USER")

@@ -36,6 +36,6 @@ public class AuthServiceImpl implements AuthService {
                 .toList();
 
         // 3)签发token（roles先给最小集，后面RBAC再扩）
-        return jwtTokenService.issueAccessToken(user.getId(), roles);
+        return jwtTokenService.issueAccessToken(user, roles);
     }
 }

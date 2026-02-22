@@ -3,6 +3,7 @@ package com.sunjintong.secureservice.config.security.jwt;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.sunjintong.secureservice.config.security.JwtProperties;
+import com.sunjintong.secureservice.entity.User;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -21,18 +22,19 @@ public class JwtTokenService {
         this.algorithm = Algorithm.HMAC256(properties.secret());
     }
 
-    public String issueAccessToken(Long userId, List<String> roles) {
+    public String issueAccessToken(User user, List<String> roles) {
 
         Instant now = Instant.now();
         Instant expireAt = now.plus(properties.accessTtlMinutes(), ChronoUnit.MINUTES);
 
         return JWT.create()
                 .withIssuer(properties.issuer())
-                .withSubject(String.valueOf(userId))
+                .withSubject(String.valueOf(user.getId()))
                 .withIssuedAt(now)
                 .withExpiresAt(expireAt)
                 .withJWTId(UUID.randomUUID().toString())
                 .withClaim("roles", roles)
+                .withClaim("tokenVersion",user.getTokenVersion())
                 .sign(algorithm);
     }
 }

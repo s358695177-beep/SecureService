@@ -256,3 +256,12 @@ It prioritizes:
 - Professional engineering expression
 
 Rather than feature quantity.
+
+---
+
+## TokenVersion 强制失效机制
+
+- JWT签发时携带 `tokenVersion` claim
+- 服务端每次请求校验 JWT.tokenVersion 与数据库 `users.token_version` 一致性
+- 管理接口 `POST /admin/users/{id}/invalidate` 通过 `tokenVersion + 1` 使该用户所有旧 token 立即失效
+- 旧 token 将返回 401 unauthorized，重新登录获取新 token 恢复访问

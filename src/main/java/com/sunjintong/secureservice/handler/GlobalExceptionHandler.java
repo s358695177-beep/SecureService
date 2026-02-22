@@ -1,4 +1,5 @@
 package com.sunjintong.secureservice.handler;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
 import com.sunjintong.secureservice.common.Result;
@@ -39,11 +40,16 @@ public class GlobalExceptionHandler {
     }
     // 4) 兜底异常（先简单处理，后面我们再加 INTERNAL_ERROR）
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Result<Void>> handleException(Exception e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Result.fail(ErrorCode.INTERNAL_ERROR));
+    public ResponseEntity<Result<Void>> handleAny(Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Result.fail(ErrorCode.INTERNAL_ERROR));
     }
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Result<Void>> handleNotReadable(HttpMessageNotReadableException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Result.fail(ErrorCode.PARAM_INVALID, "invalid json"));
+    }
+    @ExceptionHandler(JWTVerificationException.class)
+    public ResponseEntity<Result<Void>> handleException(JWTVerificationException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.fail(ErrorCode.UNAUTHORIZED, e.getMessage()));
     }
 }
