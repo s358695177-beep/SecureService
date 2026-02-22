@@ -1,4 +1,4 @@
-package com.sunjintong.secureservice.controller.admin;
+package com.sunjintong.secureservice.controller.auth;
 
 import com.sunjintong.secureservice.common.ErrorCode;
 import com.sunjintong.secureservice.common.Result;
