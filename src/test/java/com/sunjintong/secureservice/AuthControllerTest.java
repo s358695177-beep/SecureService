@@ -69,7 +69,7 @@ public class AuthControllerTest {
                                        .andReturn();
         String resultString = loginResult.getResponse().getContentAsString();
         LoginResponse loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        String token = loginResponse.getToken();
+        String token = loginResponse.getAccesstoken();
         mockMvc.perform(get(PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                                         .header("Authorization", "Bearer " + token))
                                         .andDo(print())
@@ -93,7 +93,7 @@ public class AuthControllerTest {
                         .andReturn();
         resultString =  loginResult.getResponse().getContentAsString();
         loginResponse =  objectMapper.readValue(resultString, LoginResponse.class);
-        token = loginResponse.getToken();
+        token = loginResponse.getAccesstoken();
 
         mockMvc.perform(get(PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                                         .header("Authorization", "Bearer " + token))
@@ -125,7 +125,7 @@ public class AuthControllerTest {
                 .andReturn();
         String resultString = loginResult.getResponse().getContentAsString();
         LoginResponse loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        String token = loginResponse.getToken();
+        String token = loginResponse.getAccesstoken();
 
         mockMvc.perform(put(CHANGE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)
@@ -164,7 +164,7 @@ public class AuthControllerTest {
                 .andReturn();
         String resultString = loginResult.getResponse().getContentAsString();
         LoginResponse loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        String token = loginResponse.getToken();
+        String token = loginResponse.getAccesstoken();
 
         mockMvc.perform(get(ADMIN_PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)).andDo(print())
@@ -181,7 +181,7 @@ public class AuthControllerTest {
                 .andReturn();
         resultString = loginResult.getResponse().getContentAsString();
         loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        token = loginResponse.getToken();
+        token = loginResponse.getAccesstoken();
 
         mockMvc.perform(get(ADMIN_PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)).andDo(print())
