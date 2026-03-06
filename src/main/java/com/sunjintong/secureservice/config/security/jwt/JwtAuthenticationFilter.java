@@ -11,6 +11,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -58,15 +60,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authorities
             );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            Authentication authenticationResult = SecurityContextHolder.getContext().getAuthentication();
+            if(authenticationResult == null) {
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
 
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
-            if (!response.isCommitted()) {
-                SecurityResponseWriter.writeUnauthorized(response);
-            }
-            return;
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid JWT", e);
         }
     }
 }

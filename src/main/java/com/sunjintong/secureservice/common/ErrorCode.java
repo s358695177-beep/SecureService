@@ -6,6 +6,8 @@ public enum ErrorCode {
     USERNAME_EXISTS(1002, "username already exists"),
     UNAUTHORIZED(1003,"unauthorized"),
     FORBIDDEN(1004,"forbidden"),
+    USER_NOT_FOUND(1005,"user not found"),
+    BAD_CREDENTIALS(1006,"bad credentials"),
     INTERNAL_ERROR(5000, "internal error");
     private final int code;
     private final String message;

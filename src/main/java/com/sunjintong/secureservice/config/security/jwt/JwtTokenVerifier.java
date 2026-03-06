@@ -5,7 +5,10 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.sunjintong.secureservice.common.BizException;
+import com.sunjintong.secureservice.common.ErrorCode;
 import com.sunjintong.secureservice.common.security.AuthPrincipal;
+import com.sunjintong.secureservice.common.security.TokenType;
 import com.sunjintong.secureservice.config.security.JwtProperties;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.UserRepository;
@@ -13,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 
 @Component
@@ -30,6 +32,7 @@ public class JwtTokenVerifier {
                 .build();
     }
 
+
     public AuthPrincipal verify(String token) {
         DecodedJWT jwt = verifier.verify(token);
         Integer tokenVersion = jwt.getClaim("tokenVersion").asInt();
@@ -37,18 +40,33 @@ public class JwtTokenVerifier {
             throw new JWTVerificationException("Missing tokenVersion");
         }
         Long userId = Long.valueOf(jwt.getSubject());
-        Optional<User> u = userRepository.findById(userId);
+        User user = userRepository.findById(userId).orElseThrow(() -> new JWTVerificationException("User not found"));
 
-        if (u.isEmpty() || !Objects.equals(tokenVersion, u.get().getTokenVersion())) {
+        int dbvt = (user.getTokenVersion() == null ? 0 : user.getTokenVersion());
+
+        if (!Objects.equals(tokenVersion, dbvt)) {
             throw  new JWTVerificationException("Invalid token version");
         }
+
         List<String> roles = jwt.getClaim("roles").asList(String.class);
         String jti = jwt.getId();
 
-        return new AuthPrincipal(
-                userId,
-                roles == null ? List.of() : roles,
-                jti
-        );
+        return switch (jwt.getClaim("tokenType").toString()){
+            case "access" ->new AuthPrincipal(
+                    userId,
+                    roles == null ? List.of() : roles,
+                    jti,
+                    TokenType.ACCESS
+            );
+            case "refresh" ->new AuthPrincipal(
+                    userId,
+                    roles == null ? List.of() : roles,
+                    jti,
+                    TokenType.REFRESH
+            );
+            default -> throw new BizException(ErrorCode.BAD_CREDENTIALS);
+        };
+
     }
+
 }

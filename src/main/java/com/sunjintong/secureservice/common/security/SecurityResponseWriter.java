@@ -30,11 +30,9 @@ public final class SecurityResponseWriter {
             return;
         }
 
-        response.resetBuffer();
         response.setStatus(status);
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json;charset=UTF-8");
-
         MAPPER.writeValue(response.getWriter(), body);
     }
 }

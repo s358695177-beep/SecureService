@@ -5,6 +5,6 @@ import java.util.List;
 public record AuthPrincipal(
         Long userId,
         List<String> roles,
-        String tokenId
-) {
+        String tokenId,
+        TokenType type) {
 }

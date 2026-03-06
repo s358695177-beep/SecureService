@@ -2,6 +2,7 @@ package com.sunjintong.secureservice.service.user;
 
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
+import com.sunjintong.secureservice.config.security.jwt.JwtTokenService;
 import com.sunjintong.secureservice.dto.user.RegisterRequest;
 import com.sunjintong.secureservice.entity.Role;
 import com.sunjintong.secureservice.entity.User;
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
+    private final JwtTokenService jwtTokenService;
 
     @Transactional
     @Override

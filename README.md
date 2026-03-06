@@ -1,89 +1,150 @@
 # SecureService
 
-SecureService is a security-oriented backend system designed as part of
-my backend capability reconstruction journey toward becoming a
-**Security-Focused Backend Engineer in Japan**.
+SecureService is a **security-oriented backend template** built to demonstrate **correct authentication/authorization architecture** (more than feature quantity), with a focus on being *production-style* and easy to explain in interviews for Japan-oriented backend roles.
 
-This project focuses on authentication architecture correctness rather
-than feature quantity.
+> Keywords: Spring Boot 3.x · JWT · RBAC · TokenVersion invalidation · Clean layering · Integration tests
 
-------------------------------------------------------------------------
+---
 
 ## Core Highlights
 
--   BCrypt password hashing (no plaintext storage)
--   JWT-based stateless authentication
--   TokenVersion forced invalidation mechanism
--   Unified 401 structured response
--   Clean layered architecture (Controller → Service → Repository)
--   RBAC foundation with explicit join entity
--   Integration-tested security chain
+- BCrypt password hashing (no plaintext storage)
+- JWT-based stateless authentication
+- **TokenVersion forced invalidation** (global logout without token blacklist)
+- **Clear 401 vs 403 behavior** with unified JSON error response
+- Clean layered structure (Controller → Service → Repository)
+- RBAC foundation via explicit join entity (User ↔ Role)
+- Integration-tested security chain (happy path + failure cases)
 
-------------------------------------------------------------------------
+---
 
-## Authentication Architecture Overview
+## Architecture at a Glance
 
-Authentication is implemented using JWT with an additional
-**TokenVersion mechanism** to support controlled forced logout without
-maintaining token blacklists.
+**Layers**
 
-Flow:
+- **Controller**: HTTP boundary, request/response DTOs
+- **Service**: business use-cases (login, me, invalidate)
+- **Repository**: persistence operations
+- **Security / Filters**: JWT parsing + authentication injection + exception handling
 
-1.  User logs in with username and password
-2.  BCrypt verifies credentials
-3.  JWT is issued containing:
-    -   userId
-    -   roles
-    -   issuer
-    -   expiration
-    -   tokenVersion
-4.  Client sends JWT in `Authorization: Bearer <token>` header
-5.  Server validates:
-    -   Signature
-    -   Expiration
-    -   tokenVersion consistency (DB check)
-6.  If valid → Authentication injected into SecurityContext
-7.  If invalid → 401 structured response
+**Why this design**
+- Easy to swap implementation details (e.g., storage) without rewriting business flow
+- Easy to test the security chain end-to-end
 
-------------------------------------------------------------------------
+---
+
+## Authentication & Authorization Overview
+
+SecureService uses JWT with an additional **TokenVersion mechanism** to support *forced logout* without maintaining token blacklists.
+
+### JWT contains
+
+- `userId`
+- `roles`
+- `issuer`
+- `expiration`
+- `tokenVersion`
+
+### Request flow (happy path)
+
+1. Client logs in with username/password
+2. Server verifies with BCrypt
+3. Server issues JWT (includes tokenVersion)
+4. Client sends `Authorization: Bearer <token>`
+5. Server validates:
+    - Signature
+    - Expiration
+    - **tokenVersion consistency** (compare JWT tokenVersion with DB value)
+6. If valid → inject `Authentication` into `SecurityContext`
+7. Controller executes normally
+
+---
+
+## 401 vs 403: When Each Happens
+
+**401 Unauthorized** (authentication failed / missing)
+- No token / malformed token
+- Signature invalid / expired token
+- tokenVersion mismatch (forced invalidation triggered)
+- Invalid credentials during login
+
+**403 Forbidden** (authentication succeeded, but not allowed)
+- Token is valid, but role/permission check fails (e.g., missing `ADMIN`)
+- Method-level authorization denied (`@PreAuthorize(...)`)
+
+> Practical interview explanation:
+> **401 = who are you?** (identity not established)  
+> **403 = you are identified, but you don't have permission**
+
+---
+
+## Filter vs EntryPoint: Responsibilities
+
+**JWT Filter**
+- Extracts token from header
+- Validates token (signature/expiry/tokenVersion)
+- If valid: builds Authentication and puts it into `SecurityContext`
+
+**AuthenticationEntryPoint**
+- Runs when Spring Security determines the request is **unauthenticated** for a protected resource
+- Responsible for writing the **unified 401 JSON response**
+
+(Optional) **AccessDeniedHandler**
+- Runs when request is authenticated but not authorized
+- Responsible for writing the **unified 403 JSON response**
+
+---
 
 ## TokenVersion Forced Invalidation
 
--   Each user has a `token_version` column in database
+- Each user has a `token_version` column in DB
+- JWT includes the tokenVersion at issuance
+- Each request compares `JWT.tokenVersion` with `DB.token_version`
 
--   JWT contains the current tokenVersion at issuance
+**Invalidate operation**
 
--   Each request compares JWT.tokenVersion with DB value
+```sql
+UPDATE users
+SET token_version = token_version + 1
+WHERE id = ?
+```
 
--   Admin invalidate operation performs:
+**Effect**
+- All previously issued tokens become invalid immediately
+- No token blacklist required
+- Minimal state complexity
+- Supports global logout / revoke-on-password-change patterns
 
-    UPDATE users SET token_version = token_version + 1
-
-Effect:
-
--   All previously issued tokens immediately become invalid
--   No token blacklist required
--   Minimal state complexity
--   Immediate global logout support
-
-------------------------------------------------------------------------
+---
 
 ## Demonstration Flow
 
-1.  Login → receive JWT
-2.  Access `/me` → 200
-3.  Call invalidate → token_version++
-4.  Access `/me` again → 401
-5.  Login again → 200
+1. Login → receive JWT
+2. Access `/me` → 200
+3. Call invalidate → token_version++
+4. Access `/me` again → 401
+5. Login again → 200
 
-------------------------------------------------------------------------
+---
+
+## Testing
+
+This project emphasizes **integration tests** for the security chain:
+
+- Login success/failure
+- Protected endpoint with/without token
+- Expired/invalid token → 401
+- tokenVersion mismatch → 401
+- Role denied → 403
+
+---
 
 ## Design Philosophy
 
 This project emphasizes:
 
--   Security correctness
--   Architectural clarity
--   Controlled invalidation capability
--   Professional engineering expression
--   Extensibility toward production-grade backend templates
+- Security correctness
+- Architectural clarity
+- Controlled invalidation capability
+- Professional engineering expression
+- Extensibility toward production-grade backend templates
