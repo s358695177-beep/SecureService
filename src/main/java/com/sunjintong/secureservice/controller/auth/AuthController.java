@@ -12,10 +12,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Arrays;
 
 
@@ -27,7 +29,21 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<Result> login(@RequestBody LoginRequest request){
-        return ResponseEntity.status(HttpStatus.OK).body(Result.ok(new LoginResponse(authService.login(request))));
+
+        LoginResponse loginResponse = authService.login(request);
+
+        ResponseCookie refreshCookie = ResponseCookie
+                .from("refreshToken", loginResponse.getRefreshToken())
+                .httpOnly(true)
+                .secure(false) // localhost开发先false
+                .path("/auth/refresh")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(Result.ok(loginResponse.getAccessToken()));
     }
 
     @PutMapping("/password")

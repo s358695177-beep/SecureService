@@ -14,11 +14,13 @@ import com.sunjintong.secureservice.repository.RoleRepository;
 import com.sunjintong.secureservice.repository.UserRepository;
 import com.sunjintong.secureservice.repository.UserRoleRepository;
 import com.sunjintong.secureservice.service.auth.AuthService;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,6 +28,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -52,6 +57,7 @@ public class AuthControllerTest {
     String CHANGE_PASSWORD_URL = "/auth/password";
     String PROFILE_URL = "/users/profile";
     String ADMIN_PROFILE_URL = "/admin/profile";
+    String REFRESH_URL = "/auth/refresh";
     private static final int CODE_USERNAME_EXISTS = 1002;
     @Test
     void shouldInvalidateOldTokenAfterPasswordChange() throws Exception {
@@ -69,7 +75,7 @@ public class AuthControllerTest {
                                        .andReturn();
         String resultString = loginResult.getResponse().getContentAsString();
         LoginResponse loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        String token = loginResponse.getAccesstoken();
+        String token = loginResponse.getAccessToken();
         mockMvc.perform(get(PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                                         .header("Authorization", "Bearer " + token))
                                         .andDo(print())
@@ -93,7 +99,7 @@ public class AuthControllerTest {
                         .andReturn();
         resultString =  loginResult.getResponse().getContentAsString();
         loginResponse =  objectMapper.readValue(resultString, LoginResponse.class);
-        token = loginResponse.getAccesstoken();
+        token = loginResponse.getAccessToken();
 
         mockMvc.perform(get(PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                                         .header("Authorization", "Bearer " + token))
@@ -125,7 +131,7 @@ public class AuthControllerTest {
                 .andReturn();
         String resultString = loginResult.getResponse().getContentAsString();
         LoginResponse loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        String token = loginResponse.getAccesstoken();
+        String token = loginResponse.getAccessToken();
 
         mockMvc.perform(put(CHANGE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)
@@ -164,7 +170,7 @@ public class AuthControllerTest {
                 .andReturn();
         String resultString = loginResult.getResponse().getContentAsString();
         LoginResponse loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        String token = loginResponse.getAccesstoken();
+        String token = loginResponse.getAccessToken();
 
         mockMvc.perform(get(ADMIN_PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)).andDo(print())
@@ -181,12 +187,41 @@ public class AuthControllerTest {
                 .andReturn();
         resultString = loginResult.getResponse().getContentAsString();
         loginResponse = objectMapper.readValue(resultString, LoginResponse.class);
-        token = loginResponse.getAccesstoken();
+        token = loginResponse.getAccessToken();
 
         mockMvc.perform(get(ADMIN_PROFILE_URL).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)).andDo(print())
                 .andExpect(status().isOk());
 
+    }
+
+    @Test
+    void login() throws Exception {
+        mockMvc.perform(post(Register_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterRequest("bob", "whatever123", "bob@example.com"))))
+                .andExpect(status().isCreated());
+
+        MvcResult loginResult = mockMvc.perform(post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequest("bob", "whatever123"))))
+                .andExpect(status().isOk())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE))
+                .andReturn();
+
+        String setCookieHeader = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+
+        String refreshToken = setCookieHeader.split(";", 2)[0].split("=", 2)[1];
+
+        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+
+        mockMvc.perform(post(REFRESH_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .cookie(refreshCookie))
+                .andExpect(status().isOk());
     }
 
 

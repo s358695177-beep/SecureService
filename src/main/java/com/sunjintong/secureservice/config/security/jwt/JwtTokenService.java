@@ -4,7 +4,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
-import com.sunjintong.secureservice.common.security.TokenType;
 import com.sunjintong.secureservice.config.security.JwtProperties;
 import com.sunjintong.secureservice.entity.User;
 import org.springframework.stereotype.Component;
@@ -25,10 +24,9 @@ public class JwtTokenService {
         this.algorithm = Algorithm.HMAC256(properties.secret());
     }
 
-    public String issueAccessToken(User user, List<String> roles, TokenType  tokenType) {
+    public String issueAccessToken(User user, List<String> roles) {
         Instant now = Instant.now();
-        return switch (tokenType.getType()) {
-            case "access" -> JWT.create()
+        return JWT.create()
                     .withIssuer(properties.issuer())
                     .withSubject(String.valueOf(user.getId()))
                     .withIssuedAt(now)
@@ -36,19 +34,6 @@ public class JwtTokenService {
                     .withJWTId(UUID.randomUUID().toString())
                     .withClaim("roles", roles)
                     .withClaim("tokenVersion", user.getTokenVersion())
-                    .withClaim("tokenType", tokenType.getType())
                     .sign(algorithm);
-            case "refresh" -> JWT.create()
-                    .withIssuer(properties.issuer())
-                    .withSubject(String.valueOf(user.getId()))
-                    .withIssuedAt(now)
-                    .withExpiresAt(now.plus(7, ChronoUnit.DAYS))
-                    .withJWTId(UUID.randomUUID().toString())
-                    .withClaim("roles", roles)
-                    .withClaim("tokenVersion", user.getTokenVersion())
-                    .withClaim("tokenType", tokenType.getType())
-                    .sign(algorithm);
-            default -> throw new BizException(ErrorCode.BAD_CREDENTIALS);
-        };
     }
 }

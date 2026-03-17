@@ -8,7 +8,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
 import com.sunjintong.secureservice.common.security.AuthPrincipal;
-import com.sunjintong.secureservice.common.security.TokenType;
 import com.sunjintong.secureservice.config.security.JwtProperties;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.UserRepository;
@@ -51,22 +50,11 @@ public class JwtTokenVerifier {
         List<String> roles = jwt.getClaim("roles").asList(String.class);
         String jti = jwt.getId();
 
-        return switch (jwt.getClaim("tokenType").toString()){
-            case "access" ->new AuthPrincipal(
+        return new AuthPrincipal(
                     userId,
                     roles == null ? List.of() : roles,
-                    jti,
-                    TokenType.ACCESS
+                    jti
             );
-            case "refresh" ->new AuthPrincipal(
-                    userId,
-                    roles == null ? List.of() : roles,
-                    jti,
-                    TokenType.REFRESH
-            );
-            default -> throw new BizException(ErrorCode.BAD_CREDENTIALS);
-        };
-
     }
 
 }

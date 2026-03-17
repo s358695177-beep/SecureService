@@ -4,10 +4,10 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
 import com.sunjintong.secureservice.common.security.AuthPrincipal;
-import com.sunjintong.secureservice.common.security.TokenType;
 import com.sunjintong.secureservice.config.security.jwt.JwtTokenService;
 import com.sunjintong.secureservice.config.security.jwt.JwtTokenVerifier;
 import com.sunjintong.secureservice.dto.auth.ChangePasswordRequest;
+import com.sunjintong.secureservice.dto.auth.LoginResponse;
 import com.sunjintong.secureservice.entity.RefreshToken;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.RefreshTokenRepository;
@@ -19,8 +19,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -31,26 +33,34 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final JwtTokenVerifier jwtTokenVerifier;
 
     @Override
-    public String[] login(LoginRequest request) {
+    @Transactional
+    public LoginResponse login(LoginRequest request) {
         // 1)查用户
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BizException(ErrorCode.USER_NOT_FOUND));
-
         // 2)校验密码（BCrypt.matches）
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BizException(ErrorCode.BAD_CREDENTIALS);
         }
-
         List<String> roles = userRoleRepository.findByUser(user).stream()
                 .map(ur -> ur.getRole().getCode())
                 .distinct()
                 .toList();
-
+        String accessToken = jwtTokenService.issueAccessToken(user, roles);
+        String refreshToken = "rt_" + UUID.randomUUID().toString().replace("-", "");
+        Instant now = Instant.now();
+        RefreshToken token = new RefreshToken();
+        token.setToken(refreshToken);
+        token.setRevoked(false);
+        token.setExpiresAt(now.plus(Duration.ofDays(7)));
+        token.setUserId(user.getId());
+        token.setCreatedAt(now);
+        //refreshTokenRepository.revokeAllByUserId(user.getId());
+        refreshTokenRepository.save(token);
         // 3)签发token（roles先给最小集，后面RBAC再扩）
-        return new String[]{jwtTokenService.issueAccessToken(user, roles, TokenType.ACCESS), jwtTokenService.issueAccessToken(user, roles, TokenType.REFRESH)};
+        return new LoginResponse(accessToken, refreshToken);
     }
 
     @Transactional
@@ -65,24 +75,20 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-
     @Transactional
     public String refresh(String refreshToken) {
         Instant now = Instant.now();
-        try {
-            AuthPrincipal principal = jwtTokenVerifier.verify(refreshToken);
-            if (principal.type().equals(TokenType.ACCESS)) {
-                throw new BizException(ErrorCode.UNAUTHORIZED);
-            }
-            RefreshToken token = refreshTokenRepository.findByTokenId(principal.tokenId())
-                    .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED));
-            if (token.isRevoked() || token.getExpiresAt().isBefore(now)) {
-                throw new BizException(ErrorCode.UNAUTHORIZED);
-            }
-            User user = userRepository.findById(principal.userId()).orElseThrow(() -> new BizException(ErrorCode.USER_NOT_FOUND));
-            return jwtTokenService.issueAccessToken(user,principal.roles(),TokenType.ACCESS);
-        }catch (JWTVerificationException | IllegalArgumentException e) {
+        RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED));
+        if (token.isRevoked() || token.getExpiresAt().isBefore(now)) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
+        User user = userRepository.findById(token.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.USER_NOT_FOUND));
+        List<String> roles = userRoleRepository.findByUser(user).stream()
+                .map(ur -> ur.getRole().getCode())
+                .distinct()
+                .toList();
+        return jwtTokenService.issueAccessToken(user,roles);
     }
 }
