@@ -7,9 +7,11 @@ import com.sunjintong.secureservice.dto.auth.ChangePasswordRequest;
 import com.sunjintong.secureservice.dto.auth.LoginRequest;
 import com.sunjintong.secureservice.dto.auth.LoginResponse;
 import com.sunjintong.secureservice.dto.user.RegisterRequest;
+import com.sunjintong.secureservice.entity.RefreshToken;
 import com.sunjintong.secureservice.entity.Role;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.entity.UserRole;
+import com.sunjintong.secureservice.repository.RefreshTokenRepository;
 import com.sunjintong.secureservice.repository.RoleRepository;
 import com.sunjintong.secureservice.repository.UserRepository;
 import com.sunjintong.secureservice.repository.UserRoleRepository;
@@ -30,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -52,6 +54,8 @@ public class AuthControllerTest {
     UserRepository userRepository;
     @Autowired
     UserRoleRepository userRoleRepository;
+    @Autowired
+    RefreshTokenRepository refreshTokenRepository;
     String LOGIN_URL = "/auth/login";
     String Register_URL = "/users/register";
     String CHANGE_PASSWORD_URL = "/auth/password";
@@ -225,4 +229,72 @@ public class AuthControllerTest {
     }
 
 
+    @Test
+    void refresh_should_rotate_refresh_token_and_reject_old_token() throws Exception {
+        mockMvc.perform(post(Register_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterRequest("bob", "whatever123", "bob@example.com"))))
+                .andExpect(status().isCreated());
+
+        MvcResult loginResult = mockMvc.perform(post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequest("bob", "whatever123"))))
+                .andExpect(status().isOk())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE))
+                .andReturn();
+
+        String setCookieHeader = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+
+        String refreshToken = setCookieHeader.split(";", 2)[0].split("=", 2)[1];
+
+        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+
+        MvcResult refreshResult = mockMvc.perform(post(REFRESH_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .cookie(refreshCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isNotEmpty())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE))
+                .andReturn();
+
+        setCookieHeader = refreshResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        String newRefreshToken = setCookieHeader.split(";", 2)[0].split("=", 2)[1];
+        Cookie newRefreshCookie = new Cookie("refreshToken", newRefreshToken);
+        assertNotEquals(refreshToken, newRefreshToken);
+        mockMvc.perform(post(REFRESH_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .cookie(refreshCookie))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post(REFRESH_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .cookie(newRefreshCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isNotEmpty())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE));
+
+        RefreshToken oldTokenEntity = refreshTokenRepository.findByToken(refreshToken).orElseThrow();
+        assertTrue(oldTokenEntity.isRevoked());
+
+        RefreshToken newTokenEntity = refreshTokenRepository.findByToken(newRefreshToken).orElseThrow();
+        assertTrue(newTokenEntity.isRevoked());
+    }
+
+    @Test
+    void refresh_should_return_unauthorized_when_cookie_missing() throws Exception {
+        mockMvc.perform(post(REFRESH_URL))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refresh_should_return_unauthorized_when_refresh_token_format_invalid() throws Exception {
+        Cookie invalidCookie = new Cookie("refreshToken", "abc");
+
+        mockMvc.perform(post(REFRESH_URL).cookie(invalidCookie))
+                .andExpect(status().isUnauthorized());
+    }
 }

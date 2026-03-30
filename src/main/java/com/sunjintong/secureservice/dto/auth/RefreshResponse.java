@@ -9,5 +9,6 @@ import java.time.Instant;
 @Getter
 @AllArgsConstructor
 public class RefreshResponse {
-    private final String access_token;
+    private final String accessToken;
+    private final String refreshToken;
 }

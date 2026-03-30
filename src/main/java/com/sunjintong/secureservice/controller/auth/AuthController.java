@@ -57,6 +57,20 @@ public class AuthController {
         if (refreshToken == null){
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
-        return ResponseEntity.ok(Result.ok(new RefreshResponse(authService.refresh(refreshToken))));
+
+        RefreshResponse refreshResponse = authService.refresh(refreshToken);
+
+        ResponseCookie refreshCookie = ResponseCookie
+                .from("refreshToken", refreshResponse.getRefreshToken())
+                .httpOnly(true)
+                .secure(false) // localhost开发先false
+                .path("/auth/refresh")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(Result.ok(refreshResponse.getAccessToken()));
     }
 }

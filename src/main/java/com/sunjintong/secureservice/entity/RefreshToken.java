@@ -13,7 +13,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Table(name = "refresh_tokens",
-        indexes = {@Index(name = "token",columnList = "token_Id"),
+        indexes = {@Index(name = "token",columnList = "token"),
                 @Index(name = "user",columnList = "user_Id")})
 public class RefreshToken {
     @Id
@@ -21,7 +21,7 @@ public class RefreshToken {
     private UUID id;
     @Column(nullable = false, name = "user_Id")
     private long userId;
-    @Column(nullable = false, name = "token_Id",length = 64)
+    @Column(nullable = false, name = "token",length = 64)
     private String token;
     @Column(nullable = false, name = "created_At")
     private Instant createdAt;

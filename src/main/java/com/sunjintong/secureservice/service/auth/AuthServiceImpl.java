@@ -1,13 +1,11 @@
 package com.sunjintong.secureservice.service.auth;
 
-import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
-import com.sunjintong.secureservice.common.security.AuthPrincipal;
 import com.sunjintong.secureservice.config.security.jwt.JwtTokenService;
-import com.sunjintong.secureservice.config.security.jwt.JwtTokenVerifier;
 import com.sunjintong.secureservice.dto.auth.ChangePasswordRequest;
 import com.sunjintong.secureservice.dto.auth.LoginResponse;
+import com.sunjintong.secureservice.dto.auth.RefreshResponse;
 import com.sunjintong.secureservice.entity.RefreshToken;
 import com.sunjintong.secureservice.entity.User;
 import com.sunjintong.secureservice.repository.RefreshTokenRepository;
@@ -48,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
                 .map(ur -> ur.getRole().getCode())
                 .distinct()
                 .toList();
+        revokeAllUserTokens(user.getId());
         String accessToken = jwtTokenService.issueAccessToken(user, roles);
         String refreshToken = "rt_" + UUID.randomUUID().toString().replace("-", "");
         Instant now = Instant.now();
@@ -76,19 +75,48 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Transactional
-    public String refresh(String refreshToken) {
+    public RefreshResponse refresh(String refreshToken) {
         Instant now = Instant.now();
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!refreshToken.startsWith("rt_")) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+        String raw = refreshToken.substring(3);
+        if (!raw.matches("^[0-9a-fA-F]{32}$")) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+
         RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
                 .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED));
         if (token.isRevoked() || token.getExpiresAt().isBefore(now)) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
         User user = userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED));
         List<String> roles = userRoleRepository.findByUser(user).stream()
                 .map(ur -> ur.getRole().getCode())
                 .distinct()
                 .toList();
-        return jwtTokenService.issueAccessToken(user,roles);
+        token.setRevoked(true);
+        refreshTokenRepository.save(token);
+        String accessToken = jwtTokenService.issueAccessToken(user, roles);
+        refreshToken = "rt_" + UUID.randomUUID().toString().replace("-", "");
+        RefreshToken newToken = new RefreshToken();
+        newToken.setToken(refreshToken);
+        newToken.setRevoked(false);
+        newToken.setExpiresAt(now.plus(Duration.ofDays(7)));
+        newToken.setUserId(user.getId());
+        newToken.setCreatedAt(now);
+        refreshTokenRepository.save(newToken);
+        return new RefreshResponse(accessToken,refreshToken);
     }
+
+    @Transactional
+    public void revokeAllUserTokens(Long userId) {
+        int count = refreshTokenRepository.revokeAllByUserId(userId);
+    }
+
 }

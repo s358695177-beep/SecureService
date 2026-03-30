@@ -1,150 +1,143 @@
 # SecureService
 
-SecureService is a **security-oriented backend template** built to demonstrate **correct authentication/authorization architecture** (more than feature quantity), with a focus on being *production-style* and easy to explain in interviews for Japan-oriented backend roles.
+SecureService is a **security-oriented backend template** built to demonstrate **correct authentication/authorization architecture**, now extended with **refresh token rotation** and **stateful token control**.
 
-> Keywords: Spring Boot 3.x · JWT · RBAC · TokenVersion invalidation · Clean layering · Integration tests
+> Keywords: Spring Boot 3.x · JWT · RBAC · TokenVersion invalidation · Refresh Token Rotation · HttpOnly Cookie · Integration tests
 
 ---
 
 ## Core Highlights
 
 - BCrypt password hashing (no plaintext storage)
-- JWT-based stateless authentication
-- **TokenVersion forced invalidation** (global logout without token blacklist)
-- **Clear 401 vs 403 behavior** with unified JSON error response
+- JWT-based stateless authentication (Access Token)
+- **Refresh Token with DB persistence**
+- **Refresh Token Rotation (one-time use)**
+- **TokenVersion forced invalidation**
+- Clear 401 vs 403 behavior with unified JSON response
 - Clean layered structure (Controller → Service → Repository)
-- RBAC foundation via explicit join entity (User ↔ Role)
-- Integration-tested security chain (happy path + failure cases)
+- Integration-tested security chain
 
 ---
 
-## Architecture at a Glance
+## Authentication Model (Updated)
 
-**Layers**
+### Dual Token Strategy
 
-- **Controller**: HTTP boundary, request/response DTOs
-- **Service**: business use-cases (login, me, invalidate)
-- **Repository**: persistence operations
-- **Security / Filters**: JWT parsing + authentication injection + exception handling
-
-**Why this design**
-- Easy to swap implementation details (e.g., storage) without rewriting business flow
-- Easy to test the security chain end-to-end
+| Token Type | Storage | Lifetime | Purpose |
+|----------|--------|----------|--------|
+| Access Token | Header (Bearer) | Short (e.g. 15min) | API authentication |
+| Refresh Token | HttpOnly Cookie | Long (e.g. 7d) | Token renewal |
 
 ---
 
-## Authentication & Authorization Overview
+## Refresh Token Rotation (NEW)
 
-SecureService uses JWT with an additional **TokenVersion mechanism** to support *forced logout* without maintaining token blacklists.
+### Goal
 
-### JWT contains
+Prevent replay attacks and token reuse.
 
-- `userId`
-- `roles`
-- `issuer`
-- `expiration`
-- `tokenVersion`
+### Mechanism
 
-### Request flow (happy path)
+Each refresh request:
 
-1. Client logs in with username/password
-2. Server verifies with BCrypt
-3. Server issues JWT (includes tokenVersion)
-4. Client sends `Authorization: Bearer <token>`
-5. Server validates:
-    - Signature
-    - Expiration
-    - **tokenVersion consistency** (compare JWT tokenVersion with DB value)
-6. If valid → inject `Authentication` into `SecurityContext`
-7. Controller executes normally
+1. Validate refresh token
+2. Mark **old token as revoked**
+3. Generate **new refresh token**
+4. Store new token in DB
+5. Return:
+   - new access token (body)
+   - new refresh token (cookie)
 
 ---
 
-## 401 vs 403: When Each Happens
+### Flow
 
-**401 Unauthorized** (authentication failed / missing)
-- No token / malformed token
-- Signature invalid / expired token
-- tokenVersion mismatch (forced invalidation triggered)
-- Invalid credentials during login
-
-**403 Forbidden** (authentication succeeded, but not allowed)
-- Token is valid, but role/permission check fails (e.g., missing `ADMIN`)
-- Method-level authorization denied (`@PreAuthorize(...)`)
-
-> Practical interview explanation:
-> **401 = who are you?** (identity not established)  
-> **403 = you are identified, but you don't have permission**
-
----
-
-## Filter vs EntryPoint: Responsibilities
-
-**JWT Filter**
-- Extracts token from header
-- Validates token (signature/expiry/tokenVersion)
-- If valid: builds Authentication and puts it into `SecurityContext`
-
-**AuthenticationEntryPoint**
-- Runs when Spring Security determines the request is **unauthenticated** for a protected resource
-- Responsible for writing the **unified 401 JSON response**
-
-(Optional) **AccessDeniedHandler**
-- Runs when request is authenticated but not authorized
-- Responsible for writing the **unified 403 JSON response**
-
----
-
-## TokenVersion Forced Invalidation
-
-- Each user has a `token_version` column in DB
-- JWT includes the tokenVersion at issuance
-- Each request compares `JWT.tokenVersion` with `DB.token_version`
-
-**Invalidate operation**
-
-```sql
-UPDATE users
-SET token_version = token_version + 1
-WHERE id = ?
+```text
+Login
+  ↓
+issue access + refresh token
+  ↓
+Client calls /auth/refresh
+  ↓
+validate refresh token
+  ↓
+revoke old token
+  ↓
+issue new access + refresh token
 ```
 
-**Effect**
-- All previously issued tokens become invalid immediately
-- No token blacklist required
-- Minimal state complexity
-- Supports global logout / revoke-on-password-change patterns
+---
+
+### Security Properties
+
+- Refresh token is **one-time usable**
+- Stolen refresh token becomes useless after first use
+- Server has full control (revocation supported)
+- No JWT parsing needed for refresh token (UUID-based)
 
 ---
 
-## Demonstration Flow
+## Token Validation Rules
 
-1. Login → receive JWT
-2. Access `/me` → 200
-3. Call invalidate → token_version++
-4. Access `/me` again → 401
-5. Login again → 200
+### Access Token
+
+- Signature valid
+- Not expired
+- tokenVersion matches DB
+
+### Refresh Token
+
+- Exists in DB
+- Not revoked
+- Not expired
+- Format valid (rt_ + 32 hex)
 
 ---
 
-## Testing
+## Example Refresh Response
 
-This project emphasizes **integration tests** for the security chain:
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": "<access_token>"
+}
+```
 
-- Login success/failure
-- Protected endpoint with/without token
-- Expired/invalid token → 401
-- tokenVersion mismatch → 401
-- Role denied → 403
+Cookie:
+```
+Set-Cookie: refreshToken=rt_xxx; HttpOnly; SameSite=Strict
+```
+
+---
+
+## Testing Coverage (Updated)
+
+- Refresh success (rotation)
+- Old refresh token rejected
+- New refresh token valid
+- Missing cookie → 401
+- Invalid format → 401
+- DB state validation (revoked flags)
 
 ---
 
 ## Design Philosophy
 
-This project emphasizes:
+This project now demonstrates:
 
-- Security correctness
-- Architectural clarity
-- Controlled invalidation capability
-- Professional engineering expression
-- Extensibility toward production-grade backend templates
+- Stateless + Stateful hybrid auth design
+- Secure token lifecycle management
+- Replay attack prevention
+- Backend-controlled session invalidation
+- Production-grade auth modeling
+
+---
+
+## Next Steps (Planned)
+
+- Logout endpoint
+- Refresh token hashing (DB security)
+- Multi-device session control
+- Redis-based token management
+- Rate limiting / abuse protection
