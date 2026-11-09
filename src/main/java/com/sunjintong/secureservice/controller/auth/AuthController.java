@@ -43,7 +43,7 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(Result.ok(loginResponse.getAccessToken()));
+                .body(Result.ok(new AccessTokenResponse(loginResponse.getAccessToken())));
     }
 
     @PutMapping("/password")

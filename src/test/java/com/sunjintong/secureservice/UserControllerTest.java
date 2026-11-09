@@ -113,6 +113,7 @@ class UserControllerTest {
         u.setEmail(email);
         u.setCreatedAt(now);
         u.setUpdatedAt(now);
+        u.setTokenVersion(0);
         userRepository.save(u);
     }
 }

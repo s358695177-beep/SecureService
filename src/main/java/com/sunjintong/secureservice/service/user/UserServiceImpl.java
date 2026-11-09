@@ -2,7 +2,6 @@ package com.sunjintong.secureservice.service.user;
 
 import com.sunjintong.secureservice.common.BizException;
 import com.sunjintong.secureservice.common.ErrorCode;
-import com.sunjintong.secureservice.config.security.jwt.JwtTokenService;
 import com.sunjintong.secureservice.dto.user.RegisterRequest;
 import com.sunjintong.secureservice.entity.Role;
 import com.sunjintong.secureservice.entity.User;
@@ -15,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sunjintong.secureservice.dto.user.UserProfileResponse;
 
 import java.time.Instant;
 
@@ -25,7 +25,6 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
-    private final JwtTokenService jwtTokenService;
 
     @Transactional
     @Override
@@ -51,4 +50,19 @@ public class UserServiceImpl implements UserService {
             throw new BizException(ErrorCode.USERNAME_EXISTS,e);
         }
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public UserProfileResponse getCurrentUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED));
+
+        return new UserProfileResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getCreatedAt()
+        );
+    }
+
+
 }

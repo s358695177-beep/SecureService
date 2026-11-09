@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.sunjintong.secureservice.dto.user.UserProfileResponse;
 
 import java.net.URI;
 
@@ -25,7 +26,10 @@ public class UserController {
         return ResponseEntity.created(location).body(Result.ok(userId));
     }
     @GetMapping("/profile")
-    public ResponseEntity<Result<AuthPrincipal>> getProfile(@AuthenticationPrincipal AuthPrincipal authentication) {
-        return ResponseEntity.ok(Result.ok(authentication));
+    public ResponseEntity<Result<UserProfileResponse>> getProfile(@AuthenticationPrincipal AuthPrincipal authentication) {
+        UserProfileResponse profile =
+                userService.getCurrentUserProfile(authentication.userId());
+
+        return ResponseEntity.ok(Result.ok(profile));
     }
 }

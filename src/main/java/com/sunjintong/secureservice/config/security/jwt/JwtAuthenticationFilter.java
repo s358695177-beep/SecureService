@@ -68,7 +68,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
-            throw new org.springframework.security.authentication.BadCredentialsException("Invalid JWT", e);
+            if (!response.isCommitted()) {
+                SecurityResponseWriter.writeUnauthorized(response);
+            }
+            return;
         }
     }
 }
