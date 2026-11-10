@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.util.Arrays;
 
 
@@ -37,7 +36,6 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(false) // localhost开发先false
                 .path("/auth/refresh")
-                .maxAge(Duration.ofDays(7))
                 .sameSite("Strict")
                 .build();
 
@@ -65,12 +63,29 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(false) // localhost开发先false
                 .path("/auth/refresh")
-                .maxAge(Duration.ofDays(7))
                 .sameSite("Strict")
                 .build();
 
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(Result.ok(refreshResponse.getAccessToken()));
+    }
+
+    @PostMapping("/refresh/logout")
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
+        authService.revokeCurrentRefreshToken(refreshToken);
+
+        ResponseCookie expiredCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/auth/refresh")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                .build();
     }
 }

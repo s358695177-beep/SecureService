@@ -10,4 +10,6 @@ public interface AuthService {
     void changePassword(Long userId, ChangePasswordRequest request);
     RefreshResponse refresh(String refreshToken);
     void revokeAllUserTokens(Long userId);
+
+    void revokeCurrentRefreshToken(String refreshToken);
 }

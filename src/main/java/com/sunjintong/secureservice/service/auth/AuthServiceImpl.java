@@ -119,4 +119,17 @@ public class AuthServiceImpl implements AuthService {
         int count = refreshTokenRepository.revokeAllByUserId(userId);
     }
 
+    @Transactional
+    public void revokeCurrentRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+
+        refreshTokenRepository.findByToken(refreshToken)
+                .filter(token -> !token.isRevoked())
+                .ifPresent(token -> {
+                    token.setRevoked(true);
+                    refreshTokenRepository.save(token);
+                });
+    }
 }
