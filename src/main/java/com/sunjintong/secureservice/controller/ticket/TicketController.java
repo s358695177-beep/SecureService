@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,6 +38,27 @@ public class TicketController {
         TicketResponse response = new TicketResponse(
                 ticket.getId(), ticket.getStatus(), ticket.getCreatedAt());
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.ok(response));
+    }
+
+    @GetMapping("/me")
+    public Result<List<RecentTicketResponse>> listRecentTickets(
+            @AuthenticationPrincipal AuthPrincipal principal) {
+        List<RecentTicketResponse> response = ticketService.listRecentTickets(principal.userId())
+                .stream()
+                .map(TicketController::toRecentTicketResponse)
+                .toList();
+        return Result.ok(response);
+    }
+
+    private static RecentTicketResponse toRecentTicketResponse(Ticket ticket) {
+        String summary = ticket.getDraft().replaceAll("\\s+", " ").strip();
+        int length = Math.min(240, summary.codePointCount(0, summary.length()));
+        int end = summary.offsetByCodePoints(0, length);
+        return new RecentTicketResponse(
+                ticket.getId(), ticket.getStatus(), ticket.getCreatedAt(), summary.substring(0, end));
+    }
+
+    public record RecentTicketResponse(Long ticketId, String status, Instant createdAt, String summary) {
     }
 
     public record SubmitTicketRequest(

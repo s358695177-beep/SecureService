@@ -5,6 +5,7 @@ import com.sunjintong.secureservice.repository.TicketRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -19,6 +20,10 @@ public class TicketService {
         String key = requestId.toString();
         return tickets.findByReporterIdAndRequestId(reporterId, key)
                 .orElseGet(() -> createTicket(reporterId, key, draft));
+    }
+
+    public List<Ticket> listRecentTickets(Long reporterId) {
+        return tickets.findTop5ByReporterIdOrderByCreatedAtDescIdDesc(reporterId);
     }
 
     private Ticket createTicket(Long reporterId, String requestId, String draft) {
